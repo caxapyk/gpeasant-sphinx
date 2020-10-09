@@ -3,7 +3,7 @@
 .. toctree::
    :maxdepth: 4
 
-   gp
+   pages/index
 
 .. toctree::
    :maxdepth: 1
