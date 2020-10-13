@@ -38,7 +38,7 @@ class GPeasantSphinx(object):
             os.path.abspath(os.getcwd()), 'gp', 'pages')
 
         self.root_title = 'Административно-территориальное деление'
-        self.undefined_label = 'В окладной ведомости не указано.'
+        self.undefined_label = 'В окладной ведомости не указано'
 
         self.index_filename = 'index.rst'
 
@@ -111,7 +111,10 @@ class GPeasantSphinx(object):
 
     def format3(self, name):
         """Prepend 3 wite spaces."""
-        return '   %s' % name
+        return textwrap.indent(name, '   ')
+
+    def format_note(self, note):
+        return '.. note:: \n\n%s' % self.format3(note)
 
     def format_header(self, name):
         """Underline header name"""
@@ -236,7 +239,8 @@ class GPeasantSphinx(object):
             soc_name = self.undefined_label
 
         self.cur.execute(
-            "SELECT category.name AS category, count.count AS count \
+            "SELECT category.name AS category, \
+            count.count AS count, count.comment AS comment \
             FROM count \
             LEFT JOIN category ON count.category_id=category.id \
             WHERE count.locality_id=? ORDER BY category.name", (l_id,))
@@ -244,17 +248,34 @@ class GPeasantSphinx(object):
         catcount = self.cur.fetchall()
 
         table = ''
+        comments = []
+
         counter = 1
 
-        for (category, count) in catcount:
+        for (category, count, comment) in catcount:
+            if comment is not None:
+                count = f'{str(count)}*'
+                comments.append(comment)
+
             table += self.format_table_row((category, count), counter)
             counter += 1
+
+        datasheet = table
+
+        if len(comments) > 0:
+            comment_txt = ''
+            comment_counter = 1
+            for comm in comments:
+                comment_txt += f'({comment_counter}*) {comm}\n\n'
+                comment_counter += 1
+
+            datasheet = f'{table}\n\n{self.format_note(comment_txt)}'
 
         rst = self.datasheet_templ.format(
             _index_=' '.join(l_name.split()[1:]),
             _title_=self.format_header(l_name),
-            _socname_=soc_name,
-            _datasheet_=table)
+            _socname_=soc_name + '.',
+            _datasheet_=datasheet)
 
         self.file_write(pj(pdir, self.index_filename), rst)
 
